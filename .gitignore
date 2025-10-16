@@ -18,3 +18,7 @@ coverage/
 .idea/
 # misc
 *.local
+
+week-*.pdf
+AI-Crowd-Management-System.docx
+temp.txt
