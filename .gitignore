@@ -1,0 +1,20 @@
+# dependencies
+**/node_modules/
+# builds & caches
+dist/
+build/
+.next/
+.vercel/
+.wrangler/
+.cache/
+.turbo/
+coverage/
+# env & logs
+.env*
+*.log
+# editors & OS
+.DS_Store
+.vscode/
+.idea/
+# misc
+*.local
