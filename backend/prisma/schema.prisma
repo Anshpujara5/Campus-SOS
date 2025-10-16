@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Type{
+  student 
+  security
+  driver
+  faculty
+}
+
+enum AlertStatus{
+  active
+  resolved 
+  dismissed
+}
+
+model User{
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  password String
+  role Type
+  Alerts Alert[]
+}
+
+model Alert{
+  id String @id @default(uuid())
+  type Type // student security driver
+  callTo Type[] @default([]) 
+  title String @default("Untitled")
+  message String 
+  createdAt DateTime @default(now())
+  createdById String
+  user User? @relation(fields: [createdById],references: [id])
+  status AlertStatus @default(active) // active , resolved , dismissed
+  createdByName String   @default("Anonymous")
+
+  @@index([status, createdAt])
+  @@index([createdById, createdAt])
+}
