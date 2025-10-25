@@ -1,90 +1,92 @@
 // src/hooks/useRealtimeLocations.ts
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchEventSource, type EventSourceMessage } from "@microsoft/fetch-event-source";
 import { BACKEND_URL } from "../config";
 
 export type Loc = {
-  name?: string; 
-  userId: string; role: string; lat: number; lng: number; ts: number;
-  speed?: number | null; heading?: number | null; accuracy?: number | null;
+  userId: string;
+  name?: string;
+  role: string;
+  lat: number;
+  lng: number;
+  ts: number;
+  speed?: number | null;
+  heading?: number | null;
+  accuracy?: number | null;
 };
 
 export default function useRealtimeLocations(roleFilter?: string) {
-  const [rows, setRows] = useState<Map<string, Loc>>(new Map());
+  const [rowsMap, setRowsMap] = useState<Map<string, Loc>>(new Map());
+
+  // Guards that persist across renders
+  const connectingRef = useRef(false);
+  const startedRef    = useRef(false);          // NEW: blocks re-starts even before onopen
+  const abortRef      = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const m = new Map<string, Loc>();
-    const url = `${BACKEND_URL}/api/v1/location/stream`;
-    const es = new EventSource(url);
+    const raw = localStorage.getItem("token") ?? "";
+    if (!raw) return;
+    const authHeader = raw.startsWith("Bearer ") ? raw : `Bearer ${raw}`;
 
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "snapshot") {
-          (msg.data as Loc[]).forEach((loc) => {
-            if (!roleFilter || loc.role.toLowerCase() === roleFilter.toLowerCase()) m.set(loc.userId, loc);
-          });
-          setRows(new Map(m));
-        } else if (msg.type === "location") {
-          const loc = msg.data as Loc;
-          if (!roleFilter || loc.role.toLowerCase() === roleFilter.toLowerCase()) {
-            m.set(loc.userId, loc);
-            setRows(new Map(m));
+    if (startedRef.current) return;             // <-- prevents duplicate opens
+    startedRef.current = true;
+    connectingRef.current = true;
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    fetchEventSource(`${BACKEND_URL}/api/v1/location/stream`, {
+      method: "GET",
+      signal: ctrl.signal,
+      headers: { Authorization: authHeader },
+      openWhenHidden: true,
+
+      async onopen(res) {
+        if (!res.ok) throw new Error(`SSE open failed: ${res.status}`);
+        connectingRef.current = false;
+      },
+
+      onmessage(ev: EventSourceMessage) {
+        try {
+          const msg = JSON.parse(String(ev.data));
+          if (msg?.type === "snapshot" && Array.isArray(msg.data)) {
+            const m = new Map<string, Loc>();
+            (msg.data as Loc[]).forEach((loc) => m.set(loc.userId, loc));
+            setRowsMap(m);
+          } else if (msg?.type === "location" && msg.data) {
+            const loc = msg.data as Loc;
+            setRowsMap((prev) => {
+              const next = new Map(prev);
+              next.set(loc.userId, loc);
+              return next;
+            });
           }
-        }
-      } catch {}
+        } catch {}
+      },
+
+      // IMPORTANT: let the library handle reconnects; do NOT schedule your own
+      onerror(err) {
+        // Throw to close this session; fetchEventSource will handle backoff/retry safely
+        throw err;
+      },
+
+      // REMOVE custom onclose retries to avoid double-reconnects
+    });
+
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      connectingRef.current = false;
+      startedRef.current = false;
     };
+  }, []); // open ONCE; filter is applied client-side below
 
-    return () => es.close();
-  }, [roleFilter]);
+  const rows = useMemo(() => {
+    const arr = Array.from(rowsMap.values());
+    if (!roleFilter) return arr;
+    const rf = roleFilter.toLowerCase();
+    return arr.filter((l) => String(l.role).toLowerCase() === rf);
+  }, [rowsMap, roleFilter]);
 
-  return Array.from(rows.values());
+  return rows;
 }
-
-
-// import { useEffect, useState } from "react";
-
-// export type Loc = {
-//   userId: string;
-//   role: string;
-//   lat: number;
-//   lng: number;
-//   ts: number;
-//   speed?: number | null;
-//   heading?: number | null;
-//   accuracy?: number | null;
-// };
-
-// const SSE_URL = "http://localhost:8787/api/v1/location/stream";
-
-// export default function useRealtimeLocations(roleFilter?: string) {
-//   const [rows, setRows] = useState<Map<string, Loc>>(new Map());
-
-//   useEffect(() => {
-//     const m = new Map<string, Loc>();
-//     const es = new EventSource(SSE_URL);
-
-//     es.onmessage = (e) => {
-//       try {
-//         const msg = JSON.parse(e.data);
-//         if (msg.type === "snapshot") {
-//           (msg.data as Loc[]).forEach((loc) => {
-//             if (!roleFilter || loc.role.toLowerCase() === roleFilter.toLowerCase()) {
-//               m.set(loc.userId, loc);
-//             }
-//           });
-//           setRows(new Map(m));
-//         } else if (msg.type === "location") {
-//           const loc = msg.data as Loc;
-//           if (!roleFilter || loc.role.toLowerCase() === roleFilter.toLowerCase()) {
-//             m.set(loc.userId, loc);
-//             setRows(new Map(m));
-//           }
-//         }
-//       } catch {}
-//     };
-
-//     return () => es.close();
-//   }, [roleFilter]);
-
-//   return Array.from(rows.values());
-// }

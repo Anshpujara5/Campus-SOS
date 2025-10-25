@@ -10,10 +10,8 @@ import { Publish } from "./pages/common_pages/publish";
 import Settings from "./pages/common_pages/settings";
 import ForYou from "./pages/common_pages/forYou";
 import { Alert } from "./pages/common_pages/alert";
-import CampusMapEmbed from "./pages/common_pages/campusMapEmbed";
 import "leaflet/dist/leaflet.css";
-import ShareLocation from "./pages/common_pages/location_share";
-
+import LiveCampusPage from "./pages/common_pages/liveCampusPage";
 function App() {
 
   return (
@@ -30,8 +28,7 @@ function App() {
           <Route path="/alert/:id" element={<Alert/>}/>
           <Route path="/my-alerts" element={<MyAlerts/>}/>
           <Route path="/foryou" element={<ForYou/>}/>
-          <Route path="/map" element={<CampusMapEmbed />} />
-          <Route path="/share" element={<ShareLocation />} />
+          <Route path="/map" element={<LiveCampusPage/>} />
         </Routes>
       </SidebarProvider>
     </BrowserRouter>
