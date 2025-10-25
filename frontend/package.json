@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anshpujara/crowd-management_common": "^1.0.5",
+    "@anshpujara/crowd-management_common": "^1.1.0",
     "@microsoft/fetch-event-source": "^2.0.1",
     "axios": "^1.11.0",
     "clsx": "^2.1.1",

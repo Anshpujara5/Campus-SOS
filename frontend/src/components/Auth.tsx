@@ -59,7 +59,7 @@ export default function Auth({ mode }: { mode: AuthMode }) {
         const token = pickJwt(res.data);
         if (!token) throw new Error("No token in response");
         localStorage.setItem("token", `Bearer ${token}`);
-        navigate("/student/foryou", { replace: true });
+        navigate("/foryou", { replace: true });
         return;
       }
 
@@ -78,7 +78,7 @@ export default function Auth({ mode }: { mode: AuthMode }) {
       const token = pickJwt(res.data);
       if (!token) throw new Error("No token in response");
       localStorage.setItem("token", `Bearer ${token}`);
-      navigate("/student/foryou", { replace: true });
+      navigate("/foryou", { replace: true });
     } catch (e: any) {
       // surface useful messages
       const serverMsg =
