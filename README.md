@@ -55,14 +55,15 @@ It enables **instant alerts, live tracking**, and **role-based dashboards** — 
 
 ---
 
-## 🖼️ Screenshots
+## 📸 Screenshots
 
-> _Add your project screenshots or demo GIF here for visual appeal._
-
-| Dashboard View | Live Map View | Alert Popup |
-|:--:|:--:|:--:|
-| ![Dashboard](assets/dashboard.png) | ![Map](assets/map.png) | ![Alert](assets/alert.png) |
-
+<p align="center">
+  <img src="images/cover-01.png" width="800" alt="screenshot 1" />
+  <br/><br/>
+  <img src="images/cover-02.png" width="800" alt="screenshot 2" />
+  <br/><br/>
+  <img src="images/cover-03.png" width="800" alt="screenshot 3" />
+</p>
 ---
 
 ## ⚙️ Quickstart
