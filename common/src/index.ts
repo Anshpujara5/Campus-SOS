@@ -1,6 +1,6 @@
 import z from "zod";
 
-export const Role = z.enum(['student' , 'security' , 'driver']);
+export const Role = z.enum(['student' , 'security' , 'driver','faculty']);
 export type RoleType = z.infer<typeof Role>;
 
 export const RoleCoerced = z

@@ -3,18 +3,21 @@ export declare const Role: z.ZodEnum<{
     student: "student";
     security: "security";
     driver: "driver";
+    faculty: "faculty";
 }>;
 export type RoleType = z.infer<typeof Role>;
 export declare const RoleCoerced: z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<string, string>>, z.ZodEnum<{
     student: "student";
     security: "security";
     driver: "driver";
+    faculty: "faculty";
 }>>;
 export declare const RoleInput: z.ZodObject<{
     role: z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<string, string>>, z.ZodEnum<{
         student: "student";
         security: "security";
         driver: "driver";
+        faculty: "faculty";
     }>>;
 }, z.core.$strip>;
 export declare const signupInput: z.ZodObject<{

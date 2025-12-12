@@ -1,9 +1,9 @@
 // index.ts
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { userRouter } from './routes/user'
 import { Alert } from './routes/Alert'
 import { location } from './routes/location'
+import { cors } from './cors'
 
 const app = new Hono<{
   Bindings: { DATABASE_URL: string }
@@ -19,19 +19,7 @@ const allowlist = new Set<string>([
   'https://your-frontend.com',
 ])
 
-app.use('*', cors({
-  // ✅ correct signature + return type (no 'false')
-  origin: (origin: string | undefined, _c) => {
-    // curl / non-browser: allow all (or return undefined to block)
-    if (!origin) return '*'                // or: return undefined
-    return allowlist.has(origin) ? origin : null
-  },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Type'],
-  // credentials: true, // only if using cookies + single specific origin
-  maxAge: 600,
-}))
+app.use("*", cors);
 
 app.route('/api/v1/user', userRouter)
 app.route('/api/v1/alert', Alert)

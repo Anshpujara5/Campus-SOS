@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateAlertInput = exports.createAlertInput = exports.signinInput = exports.signupInput = exports.RoleInput = exports.RoleCoerced = exports.Role = void 0;
 const zod_1 = __importDefault(require("zod"));
-exports.Role = zod_1.default.enum(['student', 'security', 'driver']);
+exports.Role = zod_1.default.enum(['student', 'security', 'driver', 'faculty']);
 exports.RoleCoerced = zod_1.default
     .string()
     .transform((s) => s.trim().toLowerCase())

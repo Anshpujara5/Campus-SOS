@@ -1,14 +1,13 @@
-import { PrismaClient } from '../generated/prisma/edge';
-import { withAccelerate } from '@prisma/extension-accelerate';
 import { Hono } from 'hono'
 import { sign, verify } from 'hono/jwt';
 import {RoleInput, signinInput,signupInput} from '@anshpujara/crowd-management_common';
 import * as bcrypt from 'bcryptjs';
+import { prisma } from "../db/prisma";
 
 type Role = 'student' | 'security' | 'driver';
 
 function isRole(x: unknown): x is Role {
-  return x === 'student' || x === 'security' || x === 'driver';
+  return x === 'student' || x === 'security' || x === 'driver' || x==='faculty';
 }
 
 export const userRouter = new Hono<{
@@ -26,9 +25,6 @@ export const userRouter = new Hono<{
 userRouter.post('/signup',async(c)=>{
     console.log("signup entered");
     console.log(c.env.DATABASE_URL);
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     const body = await c.req.json();
     const {success} = signupInput.safeParse(body);
@@ -61,9 +57,9 @@ userRouter.post('/signup',async(c)=>{
 })
 
 userRouter.post('/signin',async (c)=>{
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
+    // const prisma = new PrismaClient({
+    //     datasourceUrl:c.env.DATABASE_URL
+    // }).$extends(withAccelerate());
 
     const body = await c.req.json();
     const {success} = signinInput.safeParse(body);
@@ -124,7 +120,7 @@ userRouter.get('/debug/accelerate', (c) => {
   return c.json({
     startsWithPrisma: url.startsWith('prisma://'),
     hasApiKey,
-    keyLength: keyLen,       // typical keys are long (dozens of chars)
+    keyLength: keyLen,      
     preview: url.slice(0, 40) + '…'
   });
 });
@@ -167,20 +163,13 @@ userRouter.use(async(c,next)=>{
 
 userRouter.get('/me',async(c)=>{
     const userId=c.get('userId') as string | undefined;
-    // const name=c.get('name');
-    // const role=c.get('role');
-    // console.log(name);
+    const name=c.get('name');
     console.log(userId);
-    // console.log(role);
 
     if(!userId){
         c.status(403)
         return c.json({error:"Id not found"});
     }
-
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     try{
         const UserInformation = await prisma.user.findUnique({
@@ -217,7 +206,6 @@ userRouter.post('/role', async (c) => {
     const parsed = RoleInput.safeParse(body);
     if (!parsed.success) return c.json({ error: 'Invalid role' }, 400);
 
-    const prisma = new PrismaClient({ datasourceUrl: c.env.DATABASE_URL }).$extends(withAccelerate());
     const updated = await prisma.user.update({
         where: { id: userId },
         data: { role: parsed.data.role }, // "student" | "security" | "driver"

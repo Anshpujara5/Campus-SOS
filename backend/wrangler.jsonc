@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "backend",
+  "name": "campus-sos-backend",
   "main": "src/index.ts",
   "compatibility_date": "2025-08-07",
   "compatibility_flags": ["nodejs_compat"],

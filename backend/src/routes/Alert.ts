@@ -1,8 +1,7 @@
-import { PrismaClient } from '../generated/prisma/edge';
-import { withAccelerate } from '@prisma/extension-accelerate';
 import { Hono } from 'hono'
 import { verify } from 'hono/jwt';
 import {createAlertInput,Role,updateAlertInput} from "@anshpujara/crowd-management_common"
+import { prisma } from "../db/prisma";
 
 type Role = 'student' | 'security' | 'driver';
 
@@ -20,12 +19,12 @@ export const Alert = new Hono<{
 }>();
 
 function isRole(x: unknown): x is Role {
-  return x === 'student' || x === 'security' || x === 'driver';
+  return x === 'student' || x === 'security' || x === 'driver' || x==="faculty";
 }
 
 Alert.use(async(c,next)=>{
     const jwt = c.req.header("Authorization");
-
+    
     if(!jwt){
         c.status(401);
         return c.text("un Authorization")
@@ -34,7 +33,6 @@ Alert.use(async(c,next)=>{
     const token = jwt.split(" ")[1];
     try{    
         const payload = await verify(token,c.env.JWT_SECRET);
-
         if(!payload){
             c.status(401);
             return c.text("unAuthorization")
@@ -58,7 +56,6 @@ Alert.use(async(c,next)=>{
 })
 
 Alert.post('/create',async(c)=>{
-    console.log("Create Entered");
     const body=await c.req.json();
 
     const {success} = createAlertInput.safeParse(body);
@@ -67,18 +64,13 @@ Alert.post('/create',async(c)=>{
         c.status(400);
         return c.json({error:"Invalid inputs"});
     }
-    // console.log("hey")
     try{
         const role = c.get('role');
         const id = c.get('userId');
         const name = c.get('name') ?? 'Anonymous';
-        console.log(name)
         if(!role){
             return c.json({error:"error in role"})
         }
-        const prisma = new PrismaClient({
-            datasourceUrl:c.env.DATABASE_URL
-        }).$extends(withAccelerate())
         const alert =await prisma.alert.create({
             data:{
                 type:role,
@@ -94,19 +86,13 @@ Alert.post('/create',async(c)=>{
             id:alert.id
         })
     }catch(e){
-        console.log(e);
         c.status(403);
         return c.json({error:"error"});
     }
 })
 
 Alert.put('/alerts/:id/resolve',async(c)=>{
-    // const body = await c.req.json();
     const id = c.req.param('id');
-
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     const alertResolved = await prisma.alert.update({
         where:{
@@ -129,10 +115,6 @@ Alert.put('/alerts/update',async(c)=>{
         return c.json({error:"Invalid inputs"});
     }
 
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
-
     const alertUpdated = await prisma.alert.update({
         where:{
             id:body.id
@@ -145,11 +127,6 @@ Alert.put('/alerts/update',async(c)=>{
 })
 
 Alert.get('/alerts',async(c)=>{
-    console.log("alerts entered");
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
-    // console.log(c.env.DATABASE_URL);
     try{
         const alert = await prisma.alert.findMany({
             orderBy:[
@@ -159,19 +136,13 @@ Alert.get('/alerts',async(c)=>{
         });
         return c.json(alert);
     }catch(e){
-        console.log(e);
         c.status(403);
         return c.json({error:"Error"});
     }
 })
 
 Alert.get('/forYou',async(c)=>{
-    console.log("alerts entered");
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
     const role = (c.get("role") as string | undefined)?.toLowerCase() || "student";
-    // console.log(c.env.DATABASE_URL);
     try{
         const alert = await prisma.alert.findMany({
             where: {
@@ -187,7 +158,6 @@ Alert.get('/forYou',async(c)=>{
         });
         return c.json(alert);
     }catch(e){
-        console.log(e);
         c.status(403);
         return c.json({error:"Error"});
     }
@@ -195,10 +165,6 @@ Alert.get('/forYou',async(c)=>{
 
 Alert.get('/MyAlerts',async(c)=>{
     const userId = c.get('userId');
-    console.log(userId);
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     const LatestAlert = await prisma.alert.findMany({
         where:{
@@ -209,14 +175,10 @@ Alert.get('/MyAlerts',async(c)=>{
             { createdAt: "desc" },
         ]
     })
-    console.log(LatestAlert);
     return c.json({LatestAlert});
 })
 
 Alert.get('/alerts/latest',async(c)=>{
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     const LatestAlert = await prisma.alert.findMany({
         where:{
@@ -230,12 +192,7 @@ Alert.get('/alerts/latest',async(c)=>{
 })
 
 Alert.get('/alerts/:id',async(c)=>{
-    console.log("alerts/id entered")
-    // const body = await c.req.json();
     const id = c.req.param('id');
-    const prisma = new PrismaClient({
-        datasourceUrl:c.env.DATABASE_URL
-    }).$extends(withAccelerate());
 
     const UniqueAlert = await prisma.alert.findUnique({
         where:{
