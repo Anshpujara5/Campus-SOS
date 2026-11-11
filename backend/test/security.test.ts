@@ -1,4 +1,4 @@
-// Security regression tests. Prisma is mocked: no database or real credentials are used.
+// Security regression tests. Prisma Client and the Neon adapter are mocked: no database or real credentials are used.
 import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { decode, sign } from 'hono/jwt'
@@ -6,47 +6,52 @@ import * as bcrypt from 'bcryptjs'
 
 type FakeAlert = { id: string; createdById: string; status: string; message: string }
 
-const db = vi.hoisted(() => ({
-  alerts: [] as { id: string; createdById: string; status: string; message: string }[],
-  users: [] as { id: string; email: string; name: string; role: string; password: string }[],
-}))
+type FakeUser = { id: string; email: string; name: string; role: string; password: string }
 
-vi.mock('../src/db/prisma', () => {
-  const updateMany = vi.fn(async ({ where, data }: { where: Partial<FakeAlert>; data: Partial<FakeAlert> }) => {
-    const rows = db.alerts.filter((a) => a.id === where.id && a.createdById === where.createdById)
-    rows.forEach((a) => Object.assign(a, data))
-    return { count: rows.length }
-  })
-  return {
-    prisma: {
-      alert: {
-        updateMany,
-        update: vi.fn(async () => {
-          throw new Error('unscoped alert.update must not be used')
-        }),
-        findMany: vi.fn(async () => db.alerts),
-      },
-      user: {
-        create: vi.fn(async ({ data }: any) => {
-          const user = { id: `u-${db.users.length + 1}`, ...data }
-          db.users.push(user)
-          return user
-        }),
-        findUnique: vi.fn(async ({ where }: any) =>
-          db.users.find((u) => u.email === where.email || u.id === where.id) ?? null
-        ),
-        update: vi.fn(),
-      },
+const db = vi.hoisted(() => {
+  const db = { alerts: [] as FakeAlert[], users: [] as FakeUser[], prisma: {} as any }
+  db.prisma = {
+    alert: {
+      updateMany: vi.fn(async ({ where, data }: { where: Partial<FakeAlert>; data: Partial<FakeAlert> }) => {
+        const rows = db.alerts.filter((a) => a.id === where.id && a.createdById === where.createdById)
+        rows.forEach((a) => Object.assign(a, data))
+        return { count: rows.length }
+      }),
+      update: vi.fn(async () => {
+        throw new Error('unscoped alert.update must not be used')
+      }),
+      findMany: vi.fn(async () => db.alerts),
     },
+    user: {
+      create: vi.fn(async ({ data }: any) => {
+        const user = { id: `u-${db.users.length + 1}`, ...data }
+        db.users.push(user)
+        return user
+      }),
+      findUnique: vi.fn(async ({ where }: any) =>
+        db.users.find((u) => u.email === where.email || u.id === where.id) ?? null
+      ),
+      update: vi.fn(),
+    },
+    $disconnect: vi.fn(async () => {}),
   }
+  return db
 })
 
+vi.mock('../src/generated/prisma/client', () => ({
+  PrismaClient: vi.fn(function () {
+    return db.prisma
+  }),
+}))
+vi.mock('@prisma/adapter-neon', () => ({ PrismaNeon: vi.fn() }))
+
 import app from '../src/index'
-import { prisma } from '../src/db/prisma'
 import { TOKEN_TTL_SECONDS } from '../src/auth'
 
 const SECRET = 'test-secret-'.padEnd(48, 'x')
-const ENV = { JWT_SECRET: SECRET }
+const DB_ENV = { DATABASE_URL: 'postgres://FAKE_POOLED.example.invalid/campus_sos' }
+const ENV = { ...DB_ENV, JWT_SECRET: SECRET }
+const prisma = db.prisma
 const now = () => Math.floor(Date.now() / 1000)
 
 async function token(claims: Record<string, unknown> = {}, secret = SECRET) {
@@ -231,7 +236,11 @@ describe('location role alignment', () => {
 
 describe('disabled debug routes', () => {
   // Obviously fake, non-URL values so secret scanners don't flag the test itself.
-  const envWithDbUrl = { ...ENV, DATABASE_URL: 'FAKE_DB_URL.example.invalid', DIRECT_URL: 'FAKE_DIRECT_URL.example.invalid' }
+  const envWithDbUrl = {
+    ...ENV,
+    DATABASE_URL: 'postgres://FAKE_DB_URL.example.invalid/db',
+    DIRECT_URL: 'postgres://FAKE_DIRECT_URL.example.invalid/db',
+  }
 
   it.each(['/api/v1/user/debug/db', '/api/v1/user/debug/accelerate'])('%s is gone', async (path) => {
     for (const auth of [undefined, await token()]) {
@@ -300,9 +309,9 @@ describe('public API response exposure', () => {
 
 describe('missing or misconfigured secrets', () => {
   it.each([
-    ['missing', {}],
-    ['empty', { JWT_SECRET: '' }],
-    ['too short', { JWT_SECRET: 'short-secret' }],
+    ['missing', { ...DB_ENV }],
+    ['empty', { ...DB_ENV, JWT_SECRET: '' }],
+    ['too short', { ...DB_ENV, JWT_SECRET: 'short-secret' }],
   ])('fails closed when JWT_SECRET is %s', async (_label, env) => {
     const me = await call('/api/v1/user/me', { auth: await token() }, env)
     expect(me.status).toBe(500)

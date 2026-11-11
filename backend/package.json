@@ -4,19 +4,18 @@
   "scripts": {
     "predev": "prisma generate",
     "dev": "wrangler dev",
-    "predeploy": "prisma generate --no-engine",
+    "predeploy": "prisma generate",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "prisma:gen": "prisma generate",
-    "prisma:gen:prod": "prisma generate --no-engine",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anshpujara/crowd-management_common": "^1.1.0",
+    "@prisma/adapter-neon": "^7.1.0",
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^7.1.0",
-    "@prisma/extension-accelerate": "^2.0.2",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "express": "^5.1.0",

@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import {createAlertInput,updateAlertInput} from "@anshpujara/crowd-management_common"
-import { prisma } from "../db/prisma";
+import { withPrisma } from "../db/prisma";
 import { AppEnv, requireAuth } from '../auth';
 
 export const Alert = new Hono<AppEnv>();
 
 Alert.use(requireAuth)
+Alert.use(withPrisma)
 
 Alert.post('/create',async(c)=>{
     const body=await c.req.json();
@@ -23,7 +24,7 @@ Alert.post('/create',async(c)=>{
         if(!role){
             return c.json({error:"error in role"})
         }
-        const alert =await prisma.alert.create({
+        const alert =await c.var.prisma.alert.create({
             data:{
                 type:role,
                 title:body.title,
@@ -47,7 +48,7 @@ Alert.post('/create',async(c)=>{
 Alert.put('/alerts/:id/resolve',async(c)=>{
     const id = c.req.param('id');
 
-    const alertResolved = await prisma.alert.updateMany({
+    const alertResolved = await c.var.prisma.alert.updateMany({
         where:{
             id:id,
             createdById:c.get('userId')
@@ -73,7 +74,7 @@ Alert.put('/alerts/update',async(c)=>{
         return c.json({error:"Invalid inputs"});
     }
 
-    const alertUpdated = await prisma.alert.updateMany({
+    const alertUpdated = await c.var.prisma.alert.updateMany({
         where:{
             id:body.id,
             createdById:c.get('userId')
@@ -91,7 +92,7 @@ Alert.put('/alerts/update',async(c)=>{
 
 Alert.get('/alerts',async(c)=>{
     try{
-        const alert = await prisma.alert.findMany({
+        const alert = await c.var.prisma.alert.findMany({
             orderBy:[
                 {status: "asc"}, 
                 {createdAt: "desc" },
@@ -107,7 +108,7 @@ Alert.get('/alerts',async(c)=>{
 Alert.get('/forYou',async(c)=>{
     const role = (c.get("role") as string | undefined)?.toLowerCase() || "student";
     try{
-        const alert = await prisma.alert.findMany({
+        const alert = await c.var.prisma.alert.findMany({
             where: {
                 OR: [
                     { callTo: { has: role as any } },
@@ -129,7 +130,7 @@ Alert.get('/forYou',async(c)=>{
 Alert.get('/MyAlerts',async(c)=>{
     const userId = c.get('userId');
 
-    const LatestAlert = await prisma.alert.findMany({
+    const LatestAlert = await c.var.prisma.alert.findMany({
         where:{
             createdById:userId
         },
@@ -143,7 +144,7 @@ Alert.get('/MyAlerts',async(c)=>{
 
 Alert.get('/alerts/latest',async(c)=>{
 
-    const LatestAlert = await prisma.alert.findMany({
+    const LatestAlert = await c.var.prisma.alert.findMany({
         where:{
             status:"active"
         },
@@ -157,7 +158,7 @@ Alert.get('/alerts/latest',async(c)=>{
 Alert.get('/alerts/:id',async(c)=>{
     const id = c.req.param('id');
 
-    const UniqueAlert = await prisma.alert.findUnique({
+    const UniqueAlert = await c.var.prisma.alert.findUnique({
         where:{
             id
         }

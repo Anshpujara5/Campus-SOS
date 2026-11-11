@@ -1,12 +1,12 @@
 import { Hono } from 'hono'
 import {signinInput,signupInput} from '@anshpujara/crowd-management_common';
 import * as bcrypt from 'bcryptjs';
-import { prisma } from "../db/prisma";
+import { withPrisma } from "../db/prisma";
 import { AppEnv, getJwtSecret, isRole, misconfigured, requireAuth, signToken } from '../auth';
 
 export const userRouter = new Hono<AppEnv>();
 
-userRouter.post('/signup',async(c)=>{
+userRouter.post('/signup',withPrisma,async(c)=>{
     const secret = getJwtSecret(c.env);
     if(!secret) return misconfigured(c);
 
@@ -20,7 +20,7 @@ userRouter.post('/signup',async(c)=>{
     }
 
     try{
-        const user = await prisma.user.create({
+        const user = await c.var.prisma.user.create({
             data:{
                 email:body.email,
                 password:passwordHash,
@@ -39,10 +39,7 @@ userRouter.post('/signup',async(c)=>{
     }
 })
 
-userRouter.post('/signin',async (c)=>{
-    // const prisma = new PrismaClient({
-    //     datasourceUrl:c.env.DATABASE_URL
-    // }).$extends(withAccelerate());
+userRouter.post('/signin',withPrisma,async (c)=>{
     const secret = getJwtSecret(c.env);
     if(!secret) return misconfigured(c);
 
@@ -55,7 +52,7 @@ userRouter.post('/signin',async (c)=>{
     }
 
     try{
-        const user = await prisma.user.findUnique({
+        const user = await c.var.prisma.user.findUnique({
             where:{
                 email:body.email
             },
@@ -85,7 +82,7 @@ userRouter.get('/health', c => c.json({ ok: true, t: Date.now() }))
 
 userRouter.use(requireAuth)
 
-userRouter.get('/me',async(c)=>{
+userRouter.get('/me',withPrisma,async(c)=>{
     const userId=c.get('userId') as string | undefined;
 
     if(!userId){
@@ -94,7 +91,7 @@ userRouter.get('/me',async(c)=>{
     }
 
     try{
-        const UserInformation = await prisma.user.findUnique({
+        const UserInformation = await c.var.prisma.user.findUnique({
             where:{
                 id:userId
             },

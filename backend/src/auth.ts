@@ -1,6 +1,7 @@
 // auth.ts — shared JWT helpers and auth middleware for all routers
 import type { MiddlewareHandler } from 'hono'
 import { sign, verify } from 'hono/jwt'
+import type { PrismaClient } from './generated/prisma/client'
 
 export const ROLES = ['student', 'security', 'driver', 'faculty'] as const
 export type Role = (typeof ROLES)[number]
@@ -11,12 +12,13 @@ export const MIN_JWT_SECRET_LENGTH = 32
 export type AppEnv = {
   Bindings: {
     JWT_SECRET: string
-    PRISMA_ACCELERATE_URL: string
+    DATABASE_URL: string
   }
   Variables: {
     userId: string
     role: Role
     name: string
+    prisma: PrismaClient
   }
 }
 

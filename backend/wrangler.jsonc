@@ -4,10 +4,15 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-08-07",
   "compatibility_flags": ["nodejs_compat"],
-  // Secrets are NOT stored in this file. Set them as Cloudflare secrets:
-  //   npx wrangler secret put PRISMA_ACCELERATE_URL
+  // Public URLs stay off: a deploy must never re-enable <name>.<subdomain>.workers.dev
+  // or per-version preview URLs. Expose the Worker deliberately via a route/custom domain.
+  "workers_dev": false,
+  "preview_urls": false,
+  // Secrets are NOT stored in this file. Set them as encrypted Cloudflare secrets:
+  //   npx wrangler secret put DATABASE_URL   (Neon *pooled* connection string)
   //   npx wrangler secret put JWT_SECRET
-  // For local development, copy .env.example to .env (git-ignored).
+  // Never add a "vars" block for connection strings. For local development, copy
+  // .env.example to .env (git-ignored).
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
