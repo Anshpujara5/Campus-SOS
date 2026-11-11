@@ -1,59 +1,11 @@
 import { Hono } from 'hono'
-import { verify } from 'hono/jwt';
-import {createAlertInput,Role,updateAlertInput} from "@anshpujara/crowd-management_common"
+import {createAlertInput,updateAlertInput} from "@anshpujara/crowd-management_common"
 import { prisma } from "../db/prisma";
+import { AppEnv, requireAuth } from '../auth';
 
-type Role = 'student' | 'security' | 'driver';
+export const Alert = new Hono<AppEnv>();
 
-export const Alert = new Hono<{
-    Bindings:{
-        DATABASE_URL:string
-        DIRECT_URL:string
-        JWT_SECRET:string
-    },
-    Variables:{
-        userId:string,
-        role?:Role,
-        name:string
-    }
-}>();
-
-function isRole(x: unknown): x is Role {
-  return x === 'student' || x === 'security' || x === 'driver' || x==="faculty";
-}
-
-Alert.use(async(c,next)=>{
-    const jwt = c.req.header("Authorization");
-    
-    if(!jwt){
-        c.status(401);
-        return c.text("un Authorization")
-    }
-
-    const token = jwt.split(" ")[1];
-    try{    
-        const payload = await verify(token,c.env.JWT_SECRET);
-        if(!payload){
-            c.status(401);
-            return c.text("unAuthorization")
-        }
-
-        c.set('userId',String(payload.id));
-        c.set('name',typeof (payload as any).name === 'string' ? (payload as any).name : 'Anonymous');
-        const rawRole = (payload as any)?.role;
-        if(isRole(rawRole)){
-            c.set('role',rawRole);
-        }
-        else{
-            c.status(401);
-            return c.text("unAuthorization")
-        }
-        await next();
-    }catch(e){
-        c.status(401);
-        return c.text("unAuthorization")
-    }
-})
+Alert.use(requireAuth)
 
 Alert.post('/create',async(c)=>{
     const body=await c.req.json();
@@ -91,17 +43,23 @@ Alert.post('/create',async(c)=>{
     }
 })
 
+// Only the alert's creator may resolve or edit it; other users get 404 so ids can't be probed.
 Alert.put('/alerts/:id/resolve',async(c)=>{
     const id = c.req.param('id');
 
-    const alertResolved = await prisma.alert.update({
+    const alertResolved = await prisma.alert.updateMany({
         where:{
-            id:id
+            id:id,
+            createdById:c.get('userId')
         },
         data:{
             status:"resolved"
         }
-    }) 
+    })
+    if(alertResolved.count===0){
+        c.status(404);
+        return c.json({error:"Alert not found"});
+    }
     return c.text("Resolve Entered");
 })
 
@@ -110,19 +68,24 @@ Alert.put('/alerts/update',async(c)=>{
 
     const {success} = updateAlertInput.safeParse(body);
 
-    if(!success){
+    if(!success || typeof body.id !== 'string'){
         c.status(400);
         return c.json({error:"Invalid inputs"});
     }
 
-    const alertUpdated = await prisma.alert.update({
+    const alertUpdated = await prisma.alert.updateMany({
         where:{
-            id:body.id
+            id:body.id,
+            createdById:c.get('userId')
         },
         data:{
             message:body.message
         }
     })
+    if(alertUpdated.count===0){
+        c.status(404);
+        return c.json({error:"Alert not found"});
+    }
     return c.text("Update Entered")
 })
 

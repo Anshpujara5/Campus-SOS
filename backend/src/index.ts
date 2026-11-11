@@ -4,10 +4,9 @@ import { userRouter } from './routes/user'
 import { Alert } from './routes/Alert'
 import { location } from './routes/location'
 import { cors } from './cors'
+import type { AppEnv } from './auth'
 
-const app = new Hono<{
-  Bindings: { DATABASE_URL: string }
-}>()
+const app = new Hono<AppEnv>()
 
 app.get('/', (c) => c.text('Hello Hono!'))
 
@@ -24,15 +23,6 @@ app.use("*", cors);
 app.route('/api/v1/user', userRouter)
 app.route('/api/v1/alert', Alert)
 app.route('/api/v1/location', location)
-
-app.post('/api/v1/put', async (c) => {
-  try {
-    const body = await c.req.json()
-    return c.json({ ok: true, received: body }, 200, { 'Cache-Control': 'no-store' })
-  } catch {
-    return c.json({ error: 'invalid JSON' }, 400, { 'Cache-Control': 'no-store' })
-  }
-})
 
 export default app
 

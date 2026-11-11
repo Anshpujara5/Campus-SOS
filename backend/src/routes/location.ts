@@ -1,9 +1,7 @@
 // routes/location.ts
 import { Hono } from "hono";
-import { verify } from "hono/jwt";
 import { streamSSE } from "hono/streaming";
-
-type Role = "student" | "ambulance" | "driver" | "guard" | "faculty" | string;
+import { AppEnv, Role, requireAuth } from "../auth";
 
 type Loc = {
   userId: string;
@@ -60,10 +58,6 @@ function getBC() {
 const isNumber = (n: unknown): n is number =>
   typeof n === "number" && Number.isFinite(n);
 
-const isRole = (r: unknown): r is Role =>
-  typeof r === "string" &&
-  ["student", "ambulance", "driver", "guard", "faculty"].includes(r as string);
-
 const broadcast = async (msg: any) => {
   const payload = { ...msg, __src: getInstanceId() };
   for (const send of subscribers) {
@@ -74,57 +68,10 @@ const broadcast = async (msg: any) => {
 
 // ----------------------------------------------------------------------
 
-export const location = new Hono<{
-  Bindings: {
-    DATABASE_URL: string
-    DIRECT_URL: string
-    JWT_SECRET: string
-  },
-  Variables: {
-    userId: string,
-    role: Role,
-    name: string
-  }
-}>();
+export const location = new Hono<AppEnv>();
 
-// ✅ auth middleware (skip OPTIONS so preflight succeeds)
-location.use(async (c, next) => {
-  if (c.req.method === "OPTIONS") return next();
-
-  const auth = c.req.header("Authorization");
-  if (!auth || !auth.startsWith("Bearer ")) {
-    c.status(401);
-    return c.text("Unauthorized");
-  }
-  const token = auth.split(" ")[1];
-  try {
-    const payload = await verify(token, (c.env as any).JWT_SECRET);
-    if (!payload) {
-      c.status(401);
-      return c.text("Unauthorized");
-    }
-    const id = String((payload as any).id ?? "");
-    const name = typeof (payload as any).name === "string" ? (payload as any).name : "Anonymous";
-    const roleRaw = (payload as any).role;
-
-    if (!id) {
-      c.status(401);
-      return c.text("Unauthorized");
-    }
-    if (!isRole(roleRaw)) {
-      c.status(401);
-      return c.text("Unauthorized");
-    }
-    c.set("userId", id);
-    c.set("name", name);
-    c.set("role", roleRaw as Role);
-
-    await next();
-  } catch {
-    c.status(401);
-    return c.text("Unauthorized");
-  }
-});
+// Preflight OPTIONS requests are answered by the global cors middleware before reaching here.
+location.use(requireAuth);
 
 location.get("/stream", (c) =>
   streamSSE(c, async (stream) => {

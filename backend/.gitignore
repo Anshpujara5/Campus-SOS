@@ -15,10 +15,12 @@ dist/
 node_modules/
 .wrangler
 
-# env
+# env (never commit real secrets; only the placeholder example is tracked)
 .env
-.env.production
+.env.*
+!.env.example
 .dev.vars
+.dev.vars.*
 
 # logs
 logs/
